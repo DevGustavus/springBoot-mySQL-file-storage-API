@@ -16,25 +16,17 @@ public class FileStorageService {
     @Autowired
     ImageDataStorageRepository imageDataStorageRepository;
 
-    public String uploadImage(MultipartFile file) throws IOException {
-        ImageData result = imageDataStorageRepository.save(ImageData.builder()
-                .name(file.getOriginalFilename())
-                .type(file.getContentType())
-                .imageData(ImageUtils.compressImage(file.getBytes())).build());
-
-        if(result != null){
-            return "Saved Image in DB with name: "+file.getOriginalFilename();
-        }
-        return "Ohh ...Image not save ..";
-
-
+    public ImageData uploadImage(MultipartFile file) throws IOException {
+        ImageData imageData = new ImageData();
+        imageData.setName(file.getOriginalFilename());
+        imageData.setType(file.getContentType());
+        imageData.setImageData(ImageUtils.compressImage(file.getBytes()));
+        return imageDataStorageRepository.saveAndFlush(imageData);
     }
 
-
-    public byte[] downloadImage(String fileName){
-        Optional<ImageData> imageFromDb = imageDataStorageRepository.findByName(fileName);
-        byte[] imageInbytes = ImageUtils.decompressImage(imageFromDb.get().getImageData());
-        return imageInbytes;
+    public Optional<byte[]> downloadImage(String fileName) {
+        Optional<ImageData> imageDataOptional = imageDataStorageRepository.findByName(fileName);
+        return imageDataOptional.map(imageData -> ImageUtils.decompressImage(imageData.getImageData()));
     }
 
 }
