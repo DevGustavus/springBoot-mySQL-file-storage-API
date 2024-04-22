@@ -1,45 +1,38 @@
 package com.devGustavus.File.operation.API.controller;
 
-import com.devGustavus.File.operation.API.entity.FileUpload;
 import com.devGustavus.File.operation.API.service.FileUploadService;
-import com.devGustavus.File.operation.API.utility.FileUploadResponse;
-import javax.annotation.Resource;
-import lombok.AllArgsConstructor;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpHeaders;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import java.io.IOException;
 
 @RestController
-@AllArgsConstructor
+@RequestMapping("/files")
 public class FileUploadController {
-    private FileUploadService uploadService;
 
-    @PostMapping("/upload")
-    public FileUploadResponse uploadFile(@RequestParam("file")MultipartFile file) throws Exception {
-        FileUpload attachment = null;
-        String downloadUrl = "";
-        attachment = uploadService.saveFile(file);
-        downloadUrl = ServletUriComponentsBuilder
-                .fromCurrentContextPath()
-                .path("/download/")
-                .path(attachment.getId())
-                .toUriString();
-        return new FileUploadResponse(attachment.getFileName().toString(), downloadUrl, file.getContentType(), file.getSize());
+    @Autowired
+    FileUploadService fileStorageService;
 
+    @PostMapping
+    public ResponseEntity<?> uploadFile(@RequestParam("file")MultipartFile file) throws IOException {
+        String uploadFile = fileStorageService.uploadFile(file);
+
+        return ResponseEntity.status(HttpStatus.OK).body(uploadFile);
     }
 
-    @GetMapping("/download/{fileId}")
-    public ResponseEntity<Resource> download(@PathVariable("fileId")String fileId) throws Exception {
-        FileUpload fileUpload = null;
-        fileUpload = uploadService.downloadFile(fileId);
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(fileUpload.getFileType()))
-                .header(HttpHeaders.CONTENT_DISPOSITION, "fileUpload; filename=\""+ fileUpload.getFileName()
-                        +"\"").body((Resource) new ByteArrayResource(fileUpload.getData()));
-    }
+    @GetMapping("/{filename}")
+    public ResponseEntity<?> downloadFile(@PathVariable String filename){
+        byte[] fileInbytes = fileStorageService.downloadFile(filename);
 
+        MediaType mediaType = MediaTypeFactory.getMediaType(filename)
+                .orElse(MediaType.APPLICATION_OCTET_STREAM);
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .contentType(mediaType).body(fileInbytes);
+    }
 }
